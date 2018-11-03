@@ -161,6 +161,7 @@ class Mem2Seq(nn.Module):
         self.loss_vac += loss_Vocab.data[0]
         
     def evaluate_batch(self,batch_size,input_batches, input_lengths, target_batches, target_lengths, target_index,src_plain):  
+        import pdb;pdb.set_trace()
         # Set to not-training mode to disable dropout
         self.encoder.train(False)
         self.decoder.train(False)  
@@ -202,7 +203,7 @@ class Mem2Seq(nn.Module):
                     if ind == EOS_token:
                         temp.append('<EOS>')
                     else:
-                        temp.append(self.lang.index2word[ind]) ## get from vocabulary
+                        temp.append(self.lang.index2word[ind.item()]) ## get from vocabulary
             decoded_words.append(temp)
 
         # Set back to training mode
@@ -283,14 +284,18 @@ class EncoderMemNN(nn.Module):
 
 
     def forward(self, story):
+        # u  = torch.Size([32, 100])
         u = [self.get_state(story.size(0))]
         for hop in range(self.max_hops):
+            # torch.Size([32, 19, 100])
             embed_A = self.C[hop](story.contiguous().view(story.size(0), -1).long()) # b * (m * s) * e
             u_temp = u[-1].unsqueeze(1).expand_as(embed_A)
             prob   = self.softmax(torch.sum(embed_A*u_temp, 2))  
             embed_C = self.C[hop+1](story.contiguous().view(story.size(0), -1).long())
             prob = prob.unsqueeze(2).expand_as(embed_C)
+            # o_k = torch.Size([32, 100])
             o_k  = torch.sum(embed_C*prob, 1)
+            # u_k = 32 x 100, just return the last one
             u_k = u[-1] + o_k
             u.append(u_k)   
         return u_k
@@ -323,6 +328,8 @@ class DecoderrMemNN(nn.Module):
         self.m_story.append(m_C)
 
     def ptrMemDecoder(self, enc_query, last_hidden):
+        # enc_query = size [32]
+        # embed_q = torch.Size([32, 100])
         embed_q = self.C[0](enc_query) # b * e
         _, hidden = self.gru(embed_q.unsqueeze(0), last_hidden)
         temp = []
@@ -330,6 +337,7 @@ class DecoderrMemNN(nn.Module):
         for hop in range(self.max_hops):
             m_A = self.m_story[hop]
             u_temp = u[-1].unsqueeze(1).expand_as(m_A)
+            # prob_lg = size 32x16 (eg)
             prob_lg = torch.sum(m_A*u_temp, 2)
             prob_   = self.softmax(prob_lg)
             m_C = self.m_story[hop+1]

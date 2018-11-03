@@ -17,6 +17,11 @@ for epoch in range(300):
     # Run the train function
     pbar = tqdm(enumerate(train),total=len(train))
     for i, data in pbar: 
+        print(i)
+        if i == 0:
+            reset = True
+        else:
+            reset = False
         model.train_batch(input_batches=data[0], 
                           input_lengths=data[1], 
                           target_batches=data[2], 
@@ -25,17 +30,17 @@ for epoch in range(300):
                           batch_size=len(data[1]),
                           clip= 10.0,
                           teacher_forcing_ratio=0.5,
-                          i==0)
+                          reset=reset)
 
         pbar.set_description(model.print_loss())
-
-    if((epoch+1) % 1 == 0):    
         bleu = model.evaluate(train,avg_best)
-        model.scheduler.step(bleu)
-        if(bleu >= avg_best):
-            avg_best = bleu
-            cnt=0
-        else:
-            cnt+=1
 
-        if(cnt == 5): break
+    #if((epoch+1) % 1 == 0):    
+    #    model.scheduler.step(bleu)
+    #    if(bleu >= avg_best):
+    #        avg_best = bleu
+    #        cnt=0
+    #    else:
+    #        cnt+=1
+
+    #    if(cnt == 5): break
